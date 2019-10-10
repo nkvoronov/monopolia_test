@@ -8,6 +8,7 @@ object dmMain: TdmMain
     DefaultDatabase = 'MonopoliaTest'
     IsolationLevel = ilReadCommitted
     KeepConnection = False
+    LoginPrompt = False
     Mode = cmReadWrite
     Provider = 'SQLOLEDB.1'
     Left = 41

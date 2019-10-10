@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Data.DB, Data.Win.ADODB, Vcl.ExtCtrls, Vcl.Grids,
-  Vcl.DBGrids, datamain, Vcl.StdCtrls, System.Actions, Vcl.ActnList, Vcl.Menus;
+  Vcl.DBGrids, datamain, Vcl.StdCtrls, System.Actions, Vcl.ActnList, Vcl.Menus, Excel2000;
 
 type
   TfmMain = class(TForm)
@@ -86,8 +86,11 @@ type
     procedure acDocsContentEdtExecute(Sender: TObject);
     procedure acDocsContentDelExecute(Sender: TObject);
     procedure alMainUpdate(Action: TBasicAction; var Handled: Boolean);
-  public
-    //
+  private
+    LCID: Cardinal;
+    ExcelApp: TExcelApplication;
+    ExcelBook: TExcelWorkbook;
+    ExcelSheetMain: TExcelWorksheet;
   end;
 
 var
@@ -104,6 +107,7 @@ uses
 
 procedure TfmMain.FormCreate(Sender: TObject);
 begin
+  LCID := GetUserDefaultLCID;
   pcMain.ActivePageIndex := 0;
 end;
 
@@ -239,8 +243,81 @@ begin
 end;
 
 procedure TfmMain.acDocsPrintExecute(Sender: TObject);
+var
+  PrintFileName,
+  Number : string;
+  i : integer;
 begin
-  //PRINT
+  i := 3;
+  Number := format('%.6d', [dmMain.aqrDocs.FieldByName('ID').AsInteger]);
+  PrintFileName := ExtractFilePath(ParamStr(0)) + 'print\doc_'+ Number + '.xlsx';
+  //Connect to Excel
+  ExcelApp := TExcelApplication.Create(Nil);
+  ExcelApp.Connect;
+  ExcelApp.Visible[LCID] := True;
+  //Connect to Book
+  ExcelApp.Workbooks.Add(EmptyParam, LCID);
+  ExcelBook := TExcelWorkbook.Create(ExcelApp);
+  ExcelBook.ConnectTo(ExcelApp.ActiveWorkbook);
+  //Connect to Sheet
+  ExcelSheetMain := TExcelWorksheet.Create(ExcelBook);
+  ExcelSheetMain.ConnectTo(ExcelBook.ActiveSheet as _worksheet);
+  ExcelSheetMain.Name := 'Расход';
+  ExcelSheetMain.Cells.Item[1,1] := 'Расходная накладная № ' + Number;
+  //TITLE
+  ExcelSheetMain.Range['A1','E1'].Merge(True);
+  ExcelSheetMain.Range['A1','E1'].HorizontalAlignment := xlHAlignCenter;
+  //HEADERS
+  ExcelSheetMain.Cells.Item[2,1] := 'Товар';
+  ExcelSheetMain.Cells.Item[2,2] := 'Название';
+  ExcelSheetMain.Cells.Item[2,3] := 'Количество';
+  ExcelSheetMain.Cells.Item[2,4] := 'Цена';
+  ExcelSheetMain.Cells.Item[2,5] := 'Сумма';
+  //
+  ExcelSheetMain.Range['A2','E2'].HorizontalAlignment := xlHAlignCenter;
+  ExcelSheetMain.Range['A2','E2'].Interior.Color := clSkyBlue;
+  //DATA
+  with dmMain.aqrDocsContent do
+  try
+    DisableControls;
+    First;
+    while NOT Eof do
+    begin
+      ExcelSheetMain.Cells.Item[i,1] := FieldByName('GOOD').AsInteger;
+      ExcelSheetMain.Cells.Item[i,2] := FieldByName('NAME').AsString;
+      ExcelSheetMain.Cells.Item[i,3] := FieldByName('CNT').AsInteger;
+      ExcelSheetMain.Cells.Item[i,4] := FieldByName('PRICE').AsCurrency;
+      ExcelSheetMain.Cells.Item[i,5] := FieldByName('SUMM').AsCurrency;
+      inc(i);
+      Next;
+    end;
+  finally
+    EnableControls;
+  end;
+  //Set Column Width
+  ExcelSheetMain.Range['A2','A' + IntToStr(i)].EntireColumn.ColumnWidth := 10;
+  ExcelSheetMain.Range['B2','B' + IntToStr(i)].EntireColumn.ColumnWidth := 30;
+  ExcelSheetMain.Range['C2','C' + IntToStr(i)].EntireColumn.ColumnWidth := 12;
+  ExcelSheetMain.Range['D2','D' + IntToStr(i)].EntireColumn.ColumnWidth := 15;
+  ExcelSheetMain.Range['E2','E' + IntToStr(i)].EntireColumn.ColumnWidth := 15;
+  //
+  ExcelSheetMain.Range['A2','E' + IntToStr(i)].Borders.LineStyle := xlContinuous;
+  //FOOTER
+  ExcelSheetMain.Cells.Item[i,1] := 'Итого сумма:';
+  ExcelSheetMain.Range['A' + IntToStr(i),'D' + IntToStr(i)].Merge(True);
+  ExcelSheetMain.Range['A' + IntToStr(i),'D' + IntToStr(i)].HorizontalAlignment := xlHAlignRight;
+  ExcelSheetMain.Cells.Item[i,5] := dmMain.aqrDocs.FieldByName('SUMM').AsCurrency;
+  //Close Sheet
+  ExcelSheetMain.Disconnect;
+  FreeAndNil(ExcelSheetMain);
+  //Close Book
+  ExcelBook.Close(True, PrintFileName);
+  ExcelBook.Disconnect;
+  FreeAndNil(ExcelBook);
+  //Close Excel
+  ExcelApp.Disconnect;
+  ExcelApp.Quit;
+  FreeAndNil(ExcelApp);
 end;
 
 procedure TfmMain.acGoodsAddExecute(Sender: TObject);

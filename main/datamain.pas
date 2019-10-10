@@ -3,7 +3,7 @@ unit datamain;
 interface
 
 uses
-  System.SysUtils, System.Classes, Data.DB, Data.Win.ADODB, Forms, IniFiles;
+  System.SysUtils, System.Classes, Data.DB, Data.Win.ADODB, Forms, Dialogs, IniFiles;
 
 type
   TdmMain = class(TDataModule)
@@ -61,13 +61,11 @@ var
   dmMain: TdmMain;
 
 const
-  def_conn =
-  'Provider=SQLOLEDB.1;' +
-  'Data Source=NIKOLAY-VORONOV;' +
-  'Initial Catalog=MonopoliaTest;' +
-  'Persist Security Info=True;' +
-  'User ID=sa;' +
-  'Password=Express2019';
+  def_provider = 'SQLOLEDB.1';
+  def_server = 'localhost';
+  def_database = 'MonopoliaTest';
+  def_other = 'Persist Security Info=True;';
+  def_login_prompt = 1;
 
 implementation
 
@@ -273,20 +271,38 @@ begin
     aqrDocs.Open;
     aqrDocsContent.Open;
   except
+    ShowMessage('Не соединения с базой данных !!!');
     Application.Terminate;
   end;
 end;
 
 procedure TdmMain.LoadSettings;
 var
-  fileINI: TIniFile;
+  fileINI : TIniFile;
+  con_str,
+  server,
+  database,
+  user,
+  pass : string;
 begin
+  con_str := 'Provider=' + def_provider + ';';
   fileINI := TIniFile.Create(ExtractFilePath(ParamStr(0)) + 'monopolia_test.ini');
   with fileINI, MonopoliaTest do
   begin
-    DefaultDatabase := ReadString('db', 'name', 'MonopoliaTest');
-    Provider := 'SQLOLEDB.1';
-    ConnectionString := ReadString('db', 'connection', def_conn);
+    server := ReadString('db', 'server', def_server);
+    con_str := con_str + 'Source=' + server + ';';
+    database := ReadString('db', 'database', def_database);
+    con_str := con_str + 'Initial Catalog=' + database + ';' + def_other;
+    LoginPrompt := ReadBool('db', 'login_prompt', true);
+    if NOT LoginPrompt then
+    begin
+      user := ReadString('db', 'user', 'sa');
+      pass := ReadString('db', 'password', '');
+      con_str := con_str + 'User ID=' + user + ';Password=' + pass + ';';
+    end;
+    DefaultDatabase := database;
+    Provider := def_provider;
+    ConnectionString := con_str;
   end;
 end;
 
