@@ -239,7 +239,8 @@ end;
 
 procedure TfmMain.acDocsPostExecute(Sender: TObject);
 begin
-  dmMain.SetDocPost(dmMain.aqrDocs.FieldByName('ID').AsInteger);
+  If MessageDlg('Вы действительно хотите провести этот расход ?' ,mtConfirmation,[mbYes,mbNo], 0, mbOk)=mrYes then
+    dmMain.SetDocPost(dmMain.aqrDocs.FieldByName('ID').AsInteger);
 end;
 
 procedure TfmMain.acDocsPrintExecute(Sender: TObject);
@@ -254,7 +255,7 @@ begin
   //Connect to Excel
   ExcelApp := TExcelApplication.Create(Nil);
   ExcelApp.Connect;
-  ExcelApp.Visible[LCID] := True;
+  ExcelApp.Visible[LCID] := False;
   //Connect to Book
   ExcelApp.Workbooks.Add(EmptyParam, LCID);
   ExcelBook := TExcelWorkbook.Create(ExcelApp);
@@ -273,7 +274,7 @@ begin
   ExcelSheetMain.Cells.Item[2,3] := 'Количество';
   ExcelSheetMain.Cells.Item[2,4] := 'Цена';
   ExcelSheetMain.Cells.Item[2,5] := 'Сумма';
-  //
+  //Set Alignment and Background
   ExcelSheetMain.Range['A2','E2'].HorizontalAlignment := xlHAlignCenter;
   ExcelSheetMain.Range['A2','E2'].Interior.Color := clSkyBlue;
   //DATA
@@ -296,11 +297,14 @@ begin
   end;
   //Set Column Width
   ExcelSheetMain.Range['A2','A' + IntToStr(i)].EntireColumn.ColumnWidth := 10;
-  ExcelSheetMain.Range['B2','B' + IntToStr(i)].EntireColumn.ColumnWidth := 30;
+  ExcelSheetMain.Range['B2','B' + IntToStr(i)].EntireColumn.ColumnWidth := 32;
   ExcelSheetMain.Range['C2','C' + IntToStr(i)].EntireColumn.ColumnWidth := 12;
   ExcelSheetMain.Range['D2','D' + IntToStr(i)].EntireColumn.ColumnWidth := 15;
   ExcelSheetMain.Range['E2','E' + IntToStr(i)].EntireColumn.ColumnWidth := 15;
-  //
+  //Set Number Format
+  ExcelSheetMain.Range['D3','D' + IntToStr(i-1)].NumberFormatLocal := '# ##0,00';
+  ExcelSheetMain.Range['E3','E' + IntToStr(i)].NumberFormatLocal := '# ##0,00';
+  //Set Borders
   ExcelSheetMain.Range['A2','E' + IntToStr(i)].Borders.LineStyle := xlContinuous;
   //FOOTER
   ExcelSheetMain.Cells.Item[i,1] := 'Итого сумма:';
